@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+
+{% block body %}
+        <h1>Where's the action?</h1>
+
+        <div class="sidebar">
+            <div class="your-traject" style="display:none;">
+                <h3>Your traject</h3>
+                <p>
+                    <strong>From:</strong>
+                    <span class="from-point"></span><br />
+                    <span class="from-time"></span>
+                </p>
+                <p>
+                    <strong>To:</strong>
+                    <span class="to-point"></span><br />
+                    <span class="to-time"></span>
+                </p>
+                <p>
+                    <strong>Distance:</strong>
+                    <span class="km"></span>
+                </p>
+                <p>
+                    <a href="#" class="lets-go-button invert">Let's go for it!</a>
+                </p>
+            </div>
+        </div>
+        <div class="content">
+            <p>
+                <div class="map-canvas"></div>
+            </p>
+        </div>
+
+
+        <div class="merchant-balloon" style="display:none;">
+            <div class="balloon">
+                <p><strong class="title">Bakery W</strong></p>
+                <p style="font-size: 90%; margin-left: 12px;">
+                    Some excess in food here!<br />
+                    Ready to pick up!
+                </p>
+                <p><strong>Pickup-time:</strong> <span class="time">...</span></p>
+            </div>
+        </div>
+        <div class="collection-point-balloon balloon" style="display:none;">
+            <div class="balloon">
+                <p><strong class="title">Tinten</strong></p>
+                <p style="font-size: 90%; margin-left: 12px;">
+                    Food collection point here!<br />
+                    Would be nice to deliver some food!
+                </p>
+                <p><strong>Delivery-time:</strong> <span class="time">...</span></p>
+            </div>
+        </div>
+
+
+        <div class="dialog go-for-it-dialog" style="display:none;">
+            <h3>Let's go for it!</h3>
+            <p>
+                (TODO: dialog window for taking this job. Just once, weekly,
+                or maybe every daily.)
+            </p>
+            <p>
+            </p>
+            <p>
+                <input type="submit" value="Continue" />
+                <a href="#" class="close-button">Maybe not yet, maybe later</a>
+            </p>
+        </div>
+
+        <script type="text/javascript">
+            $(function() {
+                // map options
+                var options = {
+                      'zoom': 14,
+                      'center': new google.maps.LatLng(51.05, 3.72),
+                      'mapTypeId': google.maps.MapTypeId.ROADMAP,
+                      'mapTypeControlOptions': {
+                         'mapTypeIds': ['OSM', google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.HYBRID ]
+                      },
+                      'panControl': true,
+                      'zoomControl': true,
+                      'panControlOptions': { 'position': google.maps.ControlPosition.TOP_RIGHT },
+                      'zoomControlOptions': { 'position': google.maps.ControlPosition.TOP_RIGHT }
+                };
+
+                // map initialization
+                var gmap = new google.maps.Map($('.map-canvas').get(0), options);
+                //gmap.setMapType('OSM');
+
+                gmap.mapTypes.set('OSM', new google.maps.ImageMapType({
+                            getTileUrl: function(coord, zoom) {
+                                       return "http://osm.citylive.be/osm/" + zoom + "/" + coord.x + "/" + coord.y + ".png";
+                                  },
+                           tileSize: new google.maps.Size(256, 256),
+                           name: "OpenStreetMaps",
+                           isPng: true,
+                           maxZoom: 18
+                       }));
+
+                // Selected items
+                var selectedMerchant;
+                var selectedCollectionPoint;
+                var meMarker;
+
+                // Create markers
+                function createMarkerCreator(balloonCls, markerIconUrl , getOtherMarkers, onClick) {
+                    return function(lat, lng, title, openingHours) {
+                         var self = this;
+                         var latlng = new google.maps.LatLng(lat, lng);
+                         var marker = new google.maps.Marker({
+                                'position': latlng,
+                                'map': gmap,
+                                'icon': markerIconUrl,
+                                'title': title
+                            });
+
+                        var content = $(balloonCls).clone();
+                        content.find('.title').text(title);
+                        content.find('.time').text(openingHours);
+                        var info = new google.maps.InfoWindow({ 'content': content.html() });
+
+                        // MerchantMarker click -> show balloon
+                        google.maps.event.addListener(marker, 'click', function() {
+                            // Close other markers
+                            var m = getOtherMarkers();
+
+                            for (var i in m)
+                                m[i].hide();
+
+                            // Show balloon
+                            info.open(gmap, marker);
+
+                            // Click callback
+                            onClick(self);
+                        });
+
+                        this.hide = function() { info.setMap(null); };
+                        this.getLatLng = function() { return latlng; };
+                        this.getTitle = function() { return title; };
+                        this.getOpeningHours = function() { return openingHours; };
+                    }
+                }
+
+                var MerchantMarker = createMarkerCreator('.merchant-balloon',
+                                                    'img/marker_active.png',
+                                                    function() { return merchantMarkers; },
+                                                    function(obj) { selectedMerchant = obj; connectMarkers(); });
+                var CollectionPointMarker = createMarkerCreator('.collection-point-balloon',
+                                                    'img/marker_social.png',
+                                                    function() { return collectionPointMarkers; },
+                                                    function(obj) { selectedCollectionPoint = obj; connectMarkers(); });
+
+                var MeMarker = createMarkerCreator('.me-balloon',
+                                                    'img/you.png', // TODO
+                                                    function() { return []; },
+                                                    function(obj) { });
+                meMarker = new MeMarker(51.054, 3.722, 'You are here', '');
+
+                var merchantMarkers = [
+                    new MerchantMarker(51.058, 3.724, 'Bakery W', 'between 17u and 17.15u'),
+                    new MerchantMarker(51.048, 3.726, 'Butcher A', 'between 18u and 18.10u'),
+                    new MerchantMarker(51.046, 3.721, 'Supermarket X', 'between 17.45u and 18.30u'),
+                    new MerchantMarker(51.049, 3.723, 'Butcher C', 'between 18u and 20u')
+                ];
+
+                var collectionPointMarkers = [
+                    new CollectionPointMarker(51.059, 3.733, 'VZW Tinten', 'between 10u and 20u'),
+                    new CollectionPointMarker(51.040, 3.723, 'VZW B', 'between 14u and 19u')
+                ];
+
+                // Polygonconnector
+                var connection;
+                function connectMarkers() {
+                    if (connection)
+                        connection.setMap(null);
+
+                    if (selectedMerchant && selectedCollectionPoint) {
+                        // Show line
+                        connection = new google.maps.Polyline({
+                                'strokeWeight': 6,
+                                'strokeColor': '#444444',
+                                //'fillColor': '#5555ff',
+                                'map': gmap,
+                                'path': [
+                                                meMarker.getLatLng(),
+                                                selectedMerchant.getLatLng(),
+                                                selectedCollectionPoint.getLatLng() ],
+                                'paths': new google.maps.MVCArray([
+                                                meMarker.getLatLng(),
+                                                selectedMerchant.getLatLng(),
+                                                selectedCollectionPoint.getLatLng() ])
+                            });
+
+                        // Center map around points
+                         //gmap.fitBounds(new google.maps.LatLngBounds(
+                         //           selectedMerchant.getLatLng(),
+                         //           selectedCollectionPoint.getLatLng()
+                         //       ));
+
+                        // Show sidebar info
+                        $('.from-point').text(selectedMerchant.getTitle());
+                        $('.to-point').text(selectedCollectionPoint.getTitle());
+                        $('.from-time').text(selectedMerchant.getOpeningHours());
+                        $('.to-time').text(selectedCollectionPoint.getOpeningHours());
+                        $('.km').text('1400 meter');
+                        $('.your-traject').show();
+                    }
+                }
+            });
+
+
+            // Let's go button
+            $('.lets-go-button').click(function() {
+                $('.go-for-it-dialog').show();
+            });
+        </script>
+{% endblock %}
