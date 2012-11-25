@@ -144,16 +144,16 @@
                 }
 
                 var MerchantMarker = createMarkerCreator('.merchant-balloon',
-                                                    'img/marker_active.png',
+                                                    '/static/img/marker_active.png',
                                                     function() { return merchantMarkers; },
                                                     function(obj) { selectedMerchant = obj; connectMarkers(); });
                 var CollectionPointMarker = createMarkerCreator('.collection-point-balloon',
-                                                    'img/marker_social.png',
+                                                    '/static/img/marker_social.png',
                                                     function() { return collectionPointMarkers; },
                                                     function(obj) { selectedCollectionPoint = obj; connectMarkers(); });
 
                 var MeMarker = createMarkerCreator('.me-balloon',
-                                                    'img/you.png', // TODO
+                                                    '/static/img/you.png', // TODO
                                                     function() { return []; },
                                                     function(obj) { });
                 meMarker = new MeMarker(51.054, 3.722, 'You are here', '');
